@@ -1,10 +1,13 @@
 from typing import List, Dict, Any, Optional
-from src.observers.notification_observer import NormalClientNotifier, VIPClientNotifier, CorporateClientNotifier
+from src.observers.notification_observer import (
+    NormalClientNotifier, 
+    VIPClientNotifier, 
+    CorporateClientNotifier,
+    SpecialClientNotifier # <-- Adicionamos o ouvinte especial aqui
+)
 from src.repositories.order_repository import SQLiteOrderRepository
 from src.services.notification_service import NotificationService
 from src.services.order_service import OrderService
-import json
-from datetime import datetime
 
 class Sis:
     def __init__(self) -> None:
@@ -12,10 +15,11 @@ class Sis:
         self.notifier = NotificationService()
         self.service = OrderService(self.repo, self.notifier)
         
-        # Conectando os Observers
+        # Conectando TODOS os Observers
         self.service.attach(NormalClientNotifier(self.notifier))
         self.service.attach(VIPClientNotifier(self.notifier))
         self.service.attach(CorporateClientNotifier(self.notifier))
+        self.service.attach(SpecialClientNotifier(self.notifier))
 
     def add_ped(self, n: str, its: List[Dict[str, Any]], t: str) -> int:
         return self.service.add_ped(n, its, t)
@@ -45,29 +49,15 @@ class Sis:
     def close(self) -> None:
         pass
 
+# A classe filha agora usa as regras da classe pai (respeitando o LSP),
+# apenas forçando o tipo do pedido para 'especial'.
 class PedEspecial(Sis):
+    """
+    Agora respeita 100% o LSP. 
+    Não altera fluxos de controle, apenas força o client_type para 'especial'.
+    """
     def add_ped(self, n: str, its: List[Dict[str, Any]], t: str) -> int:
-        dt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        tot = 0.0
-        for i in its:
-            if i['tipo'] == 'normal':
-                tot += i['p'] * i['q']
-            elif i['tipo'] == 'desc10':
-                tot += i['p'] * i['q'] * 0.9
-            elif i['tipo'] == 'desc20':
-                tot += i['p'] * i['q'] * 0.8
-        tot = tot * 1.15
-        
-        items_str = json.dumps(its)
-        order_id = self.repo.insert(n, items_str, tot, 'pendente', dt, t)
-        print(f"Email especial enviado para {n}: Pedido especial recebido!")
-        return order_id
-
-    def upd_st(self, id: int, s: str) -> None:
-        p = self.get_ped(id)
-        if p:
-            self.repo.update_status(id, s)
-            print(f"Pedido especial {id} -> {s}")
+        return super().add_ped(n, its, 'especial')
 
 def main() -> None:
     pass

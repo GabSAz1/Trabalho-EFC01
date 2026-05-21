@@ -68,3 +68,16 @@ class CorporateClientNotifier(OrderObserver):
             self.notifier.send_email(client, "Pedido entregue!")
             pts = int(order_data['tot'] * 1.5)
             print(f"Cliente corporativo ganhou {pts} pontos!")
+
+class SpecialClientNotifier(OrderObserver):
+    def __init__(self, notifier: NotificationService):
+        self.notifier = notifier
+
+    def update(self, event_type: str, order_data: Dict[str, Any]) -> None:
+        if order_data['tp'] != 'especial': return
+        
+        if event_type == 'created':
+            print(f"Email especial enviado para {order_data['cli']}: Pedido especial recebido!")
+        elif event_type in ['aprovado', 'enviado', 'entregue', 'cancelado']:
+            ped_id = order_data.get('id', 'desconhecido')
+            print(f"Pedido especial {ped_id} -> {event_type}")

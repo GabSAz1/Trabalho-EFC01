@@ -39,3 +39,7 @@ class CorpOrderDiscount(OrderDiscountStrategy):
 class NormalOrderDiscount(OrderDiscountStrategy):
     def apply_discount(self, total: float) -> float:
         return total
+    
+class SpecialOrderDiscount(OrderDiscountStrategy):
+    def apply_discount(self, total: float) -> float:
+        return total * 1.15

@@ -1,12 +1,12 @@
 import json
-from datetime import datetime
 from typing import List, Dict, Any, Optional
 from src.repositories.interfaces import IOrderRepository
 from src.services.notification_service import NotificationService
+from src.models.order import Order # <-- Importamos o Model aqui
 from src.strategies.payment_strategy import CreditCardPayment, PixPayment, BoletoPayment
 from src.strategies.discount_strategy import (
     NormalDiscount, Discount10, Discount20, FreeShipping,
-    VIPOrderDiscount, CorpOrderDiscount, NormalOrderDiscount
+    VIPOrderDiscount, CorpOrderDiscount, NormalOrderDiscount, SpecialOrderDiscount
 )
 
 class OrderService:
@@ -24,7 +24,8 @@ class OrderService:
         self.order_discounts = {
             'normal': NormalOrderDiscount(),
             'vip': VIPOrderDiscount(),
-            'corporativo': CorpOrderDiscount()
+            'corporativo': CorpOrderDiscount(),
+            'especial': SpecialOrderDiscount()
         }
         self.payment_methods = {
             'cartao': CreditCardPayment(),
@@ -41,14 +42,18 @@ class OrderService:
             obs.update(event_type, order_data)
 
     def add_ped(self, client: str, items: List[Dict[str, Any]], client_type: str) -> int:
-        dt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         tot = self._calculate_total(items, client_type)
         
-        items_str = json.dumps(items)
-        order_id = self.repo.insert(client, items_str, tot, 'pendente', dt, client_type)
+        # Uso do Factory Method do próprio Model
+        order_dict = Order.create_payload(client, items, tot, client_type)
+        items_str = json.dumps(order_dict['itens'])
         
-        # Cria um payload falso com os dados necessários para o observer
-        order_payload = {'cli': client, 'tp': client_type, 'tot': tot}
+        order_id = self.repo.insert(
+            order_dict['cli'], items_str, order_dict['tot'], 
+            order_dict['st'], order_dict['dt'], order_dict['tp']
+        )
+        
+        order_payload = {'id': order_id, 'cli': client, 'tp': client_type, 'tot': tot}
         self._notify_observers('created', order_payload)
         
         return order_id

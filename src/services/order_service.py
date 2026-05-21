@@ -3,11 +3,34 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 from src.repositories.interfaces import IOrderRepository
 from src.services.notification_service import NotificationService
+from src.strategies.payment_strategy import CreditCardPayment, PixPayment, BoletoPayment
+from src.strategies.discount_strategy import (
+    NormalDiscount, Discount10, Discount20, FreeShipping,
+    VIPOrderDiscount, CorpOrderDiscount, NormalOrderDiscount
+)
 
 class OrderService:
     def __init__(self, repository: IOrderRepository, notifier: NotificationService) -> None:
         self.repo = repository
         self.notifier = notifier
+        
+        # Registro das Estratégias (OCP garantido)
+        self.item_discounts = {
+            'normal': NormalDiscount(),
+            'desc10': Discount10(),
+            'desc20': Discount20(),
+            'frete_gratis': FreeShipping()
+        }
+        self.order_discounts = {
+            'normal': NormalOrderDiscount(),
+            'vip': VIPOrderDiscount(),
+            'corporativo': CorpOrderDiscount()
+        }
+        self.payment_methods = {
+            'cartao': CreditCardPayment(),
+            'pix': PixPayment(),
+            'boleto': BoletoPayment()
+        }
 
     def add_ped(self, client: str, items: List[Dict[str, Any]], client_type: str) -> int:
         dt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -21,21 +44,14 @@ class OrderService:
 
     def _calculate_total(self, items: List[Dict[str, Any]], client_type: str) -> float:
         tot = 0.0
+        # Delega o cálculo para a estratégia de cada item
         for i in items:
-            if i['tipo'] == 'normal':
-                tot += i['p'] * i['q']
-            elif i['tipo'] == 'desc10':
-                tot += i['p'] * i['q'] * 0.9
-            elif i['tipo'] == 'desc20':
-                tot += i['p'] * i['q'] * 0.8
-            elif i['tipo'] == 'frete_gratis':
-                tot += i['p'] * i['q']
+            strategy = self.item_discounts.get(i['tipo'], NormalDiscount())
+            tot += strategy.calculate(i['p'], i['q'])
 
-        if client_type == 'vip':
-            tot *= 0.95
-        elif client_type == 'corporativo':
-            tot *= 0.90
-        return tot
+        # Delega o desconto final para a estratégia do tipo de cliente
+        order_strategy = self.order_discounts.get(client_type, NormalOrderDiscount())
+        return order_strategy.apply_discount(tot)
 
     def _notify_creation(self, client: str, client_type: str) -> None:
         if client_type == 'normal':
@@ -90,20 +106,17 @@ class OrderService:
             print("Valor insuficiente!")
             return False
         
-        if method == 'cartao':
-            print("Processando pagamento com cartao...\nCartao validado!")
-            self.upd_st(order_id, 'aprovado')
-            return True
-        elif method == 'pix':
-            print("Gerando QR Code PIX...\nPIX recebido!")
-            self.upd_st(order_id, 'aprovado')
-            return True
-        elif method == 'boleto':
-            print("Gerando boleto...\nBoleto gerado!")
-            return True
-        else:
+        # Delega o pagamento para a Estratégia sem usar if/elif
+        payment_strategy = self.payment_methods.get(method)
+        if not payment_strategy:
             print("Metodo de pagamento invalido!")
             return False
+            
+        if payment_strategy.process(value):
+            if not payment_strategy.requires_manual_approval():
+                self.upd_st(order_id, 'aprovado')
+            return True
+        return False
             
     def validar_estoque(self, items: List[Dict[str, Any]]) -> bool:
         est = {'produto1': 100, 'produto2': 50, 'produto3': 75}

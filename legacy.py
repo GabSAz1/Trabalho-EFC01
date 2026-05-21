@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Optional
+from src.observers.notification_observer import NormalClientNotifier, VIPClientNotifier, CorporateClientNotifier
 from src.repositories.order_repository import SQLiteOrderRepository
 from src.services.notification_service import NotificationService
 from src.services.order_service import OrderService
@@ -10,6 +11,11 @@ class Sis:
         self.repo = SQLiteOrderRepository('loja.db')
         self.notifier = NotificationService()
         self.service = OrderService(self.repo, self.notifier)
+        
+        # Conectando os Observers
+        self.service.attach(NormalClientNotifier(self.notifier))
+        self.service.attach(VIPClientNotifier(self.notifier))
+        self.service.attach(CorporateClientNotifier(self.notifier))
 
     def add_ped(self, n: str, its: List[Dict[str, Any]], t: str) -> int:
         return self.service.add_ped(n, its, t)

@@ -13,8 +13,8 @@ class OrderService:
     def __init__(self, repository: IOrderRepository, notifier: NotificationService) -> None:
         self.repo = repository
         self.notifier = notifier
+        self._observers = [] # Lista de ouvintes
         
-        # Registro das Estratégias (OCP garantido)
         self.item_discounts = {
             'normal': NormalDiscount(),
             'desc10': Discount10(),
@@ -32,6 +32,14 @@ class OrderService:
             'boleto': BoletoPayment()
         }
 
+    # Sistema de Inscrição (Observer)
+    def attach(self, observer: Any) -> None:
+        self._observers.append(observer)
+
+    def _notify_observers(self, event_type: str, order_data: Dict[str, Any]) -> None:
+        for obs in self._observers:
+            obs.update(event_type, order_data)
+
     def add_ped(self, client: str, items: List[Dict[str, Any]], client_type: str) -> int:
         dt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         tot = self._calculate_total(items, client_type)
@@ -39,29 +47,20 @@ class OrderService:
         items_str = json.dumps(items)
         order_id = self.repo.insert(client, items_str, tot, 'pendente', dt, client_type)
         
-        self._notify_creation(client, client_type)
+        # Cria um payload falso com os dados necessários para o observer
+        order_payload = {'cli': client, 'tp': client_type, 'tot': tot}
+        self._notify_observers('created', order_payload)
+        
         return order_id
 
     def _calculate_total(self, items: List[Dict[str, Any]], client_type: str) -> float:
         tot = 0.0
-        # Delega o cálculo para a estratégia de cada item
         for i in items:
             strategy = self.item_discounts.get(i['tipo'], NormalDiscount())
             tot += strategy.calculate(i['p'], i['q'])
 
-        # Delega o desconto final para a estratégia do tipo de cliente
         order_strategy = self.order_discounts.get(client_type, NormalOrderDiscount())
         return order_strategy.apply_discount(tot)
-
-    def _notify_creation(self, client: str, client_type: str) -> None:
-        if client_type == 'normal':
-            self.notifier.send_email(client, "Pedido recebido!")
-        elif client_type == 'vip':
-            self.notifier.send_email(client, "Pedido recebido!")
-            self.notifier.send_sms(client, "Pedido VIP recebido!")
-        elif client_type == 'corporativo':
-            self.notifier.send_email(client, "Pedido recebido!")
-            self.notifier.notify_manager(client)
             
     def get_ped(self, order_id: int) -> Optional[Dict[str, Any]]:
         r = self.repo.get_by_id(order_id)
@@ -74,29 +73,7 @@ class OrderService:
         p = self.get_ped(order_id)
         if p:
             self.repo.update_status(order_id, status)
-            self._handle_status_change_side_effects(p, status)
-
-    def _handle_status_change_side_effects(self, p: Dict[str, Any], status: str) -> None:
-        if status == 'aprovado':
-            self.notifier.send_email(p['cli'], "Pedido aprovado!")
-            if p['tp'] == 'vip':
-                self.notifier.send_sms(p['cli'], "Pedido aprovado!")
-        elif status == 'enviado':
-            self.notifier.send_email(p['cli'], "Pedido enviado!")
-        elif status == 'entregue':
-            self.notifier.send_email(p['cli'], "Pedido entregue!")
-            self._award_points(p)
-
-    def _award_points(self, p: Dict[str, Any]) -> None:
-        if p['tp'] == 'vip':
-            pts = int(p['tot'] * 2)
-            print(f"Cliente VIP ganhou {pts} pontos!")
-        elif p['tp'] == 'corporativo':
-            pts = int(p['tot'] * 1.5)
-            print(f"Cliente corporativo ganhou {pts} pontos!")
-        else:
-            pts = int(p['tot'])
-            print(f"Cliente ganhou {pts} pontos!")
+            self._notify_observers(status, p)
 
     def proc_pag(self, order_id: int, method: str, value: float) -> bool:
         p = self.get_ped(order_id)
@@ -106,7 +83,6 @@ class OrderService:
             print("Valor insuficiente!")
             return False
         
-        # Delega o pagamento para a Estratégia sem usar if/elif
         payment_strategy = self.payment_methods.get(method)
         if not payment_strategy:
             print("Metodo de pagamento invalido!")

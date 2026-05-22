@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any
 
 class IOrderRepository(ABC):
     @abstractmethod
@@ -7,7 +7,7 @@ class IOrderRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_id(self, order_id: int) -> Optional[Tuple]:
+    def get_by_id(self, order_id: int) -> Optional[Tuple[Any, ...]]:
         pass
 
     @abstractmethod
@@ -15,13 +15,13 @@ class IOrderRepository(ABC):
         pass
 
     @abstractmethod
-    def get_all(self) -> List[Tuple]:
+    def get_all(self) -> List[Tuple[Any, ...]]:
         pass
 
     @abstractmethod
-    def get_by_client(self, client: str) -> List[Tuple]:
+    def get_by_client(self, client: str) -> List[Tuple[Any, ...]]:
         pass
 
     @abstractmethod
-    def get_distinct_clients(self) -> List[Tuple]:
+    def get_distinct_clients(self) -> List[Tuple[Any, ...]]:
         pass

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from datetime import datetime
 import json
 
@@ -14,7 +14,7 @@ class Order:
     client_type: str
 
     @classmethod
-    def from_tuple(cls, data: tuple) -> 'Order':
+    def from_tuple(cls, data: Tuple[Any, ...]) -> 'Order':
         """Construtor alternativo para dados vindos do banco."""
         return cls(
             id=data[0],

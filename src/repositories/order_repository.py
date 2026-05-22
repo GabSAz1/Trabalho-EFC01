@@ -1,5 +1,5 @@
 import sqlite3
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any, cast
 from .interfaces import IOrderRepository
 
 class SQLiteOrderRepository(IOrderRepository):
@@ -25,11 +25,11 @@ class SQLiteOrderRepository(IOrderRepository):
             db.commit()
             return int(c.lastrowid) if c.lastrowid else 0
 
-    def get_by_id(self, order_id: int) -> Optional[Tuple]:
+    def get_by_id(self, order_id: int) -> Optional[Tuple[Any, ...]]:
         with sqlite3.connect(self.db_path) as db:
             c = db.cursor()
             c.execute("SELECT * FROM ped WHERE id=?", (order_id,))
-            return c.fetchone()
+            return cast(Optional[Tuple[Any, ...]], c.fetchone())
 
     def update_status(self, order_id: int, status: str) -> None:
         with sqlite3.connect(self.db_path) as db:
@@ -37,20 +37,20 @@ class SQLiteOrderRepository(IOrderRepository):
             c.execute("UPDATE ped SET st=? WHERE id=?", (status, order_id))
             db.commit()
 
-    def get_all(self) -> List[Tuple]:
+    def get_all(self) -> List[Tuple[Any, ...]]:
         with sqlite3.connect(self.db_path) as db:
             c = db.cursor()
             c.execute("SELECT * FROM ped")
-            return c.fetchall()
+            return cast(List[Tuple[Any, ...]], c.fetchall())
 
-    def get_by_client(self, client: str) -> List[Tuple]:
+    def get_by_client(self, client: str) -> List[Tuple[Any, ...]]:
         with sqlite3.connect(self.db_path) as db:
             c = db.cursor()
             c.execute("SELECT * FROM ped WHERE cli=?", (client,))
-            return c.fetchall()
+            return cast(List[Tuple[Any, ...]], c.fetchall())
 
-    def get_distinct_clients(self) -> List[Tuple]:
+    def get_distinct_clients(self) -> List[Tuple[Any, ...]]:
         with sqlite3.connect(self.db_path) as db:
             c = db.cursor()
             c.execute("SELECT DISTINCT cli, tp FROM ped")
-            return c.fetchall()
+            return cast(List[Tuple[Any, ...]], c.fetchall())

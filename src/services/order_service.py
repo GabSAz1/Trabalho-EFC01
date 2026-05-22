@@ -13,7 +13,7 @@ class OrderService:
     def __init__(self, repository: IOrderRepository, notifier: NotificationService) -> None:
         self.repo = repository
         self.notifier = notifier
-        self._observers = [] # Lista de ouvintes
+        self._observers: List[Any] = [] # Lista de ouvintes
         
         self.item_discounts = {
             'normal': NormalDiscount(),
@@ -112,7 +112,7 @@ class OrderService:
 
     def calc_tot_cli(self, client: str) -> float:
         orders = self.repo.get_by_client(client)
-        return sum(r[3] for r in orders)
+        return sum(float(r[3]) for r in orders)
 
     def gerar_rel(self, tipo: str) -> None:
         if tipo == 'vendas':

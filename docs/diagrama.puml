@@ -1,0 +1,127 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+class Sis {
+    +add_ped(n, its, t) : int
+    +get_ped(id) : dict
+    +upd_st(id, s)
+    +calc_tot_cli(n) : float
+    +gerar_rel(tipo)
+    +proc_pag(id, m, vl) : bool
+    +validar_estoque(its) : bool
+    +cancelar_pedido(id)
+    +close()
+}
+
+class Order {
+    +int id
+    +str client
+    +List items
+    +float total
+    +str status
+    +str date
+    +str client_type
+    {static} +from_tuple(data) : Order
+    {static} +create_payload(client, items, total, client_type) : dict
+}
+note bottom of Order : Factory Method\n(create_payload)
+
+interface IOrderRepository {
+    +insert(...) : int
+    +get_by_id(id) : tuple
+    +update_status(id, status)
+    +get_all() : list
+    +get_by_client(client) : list
+    +get_distinct_clients() : list
+}
+
+class SQLiteOrderRepository {
+    -str db_path
+    -_init_db()
+}
+SQLiteOrderRepository ..|> IOrderRepository
+
+class NotificationService {
+    +send_email(client, msg)
+    +send_sms(client, msg)
+    +notify_manager(client)
+}
+
+class OrderService {
+    -IOrderRepository repo
+    -NotificationService notifier
+    -List _observers
+    -Dict item_discounts
+    -Dict order_discounts
+    -Dict payment_methods
+    +attach(observer)
+    +add_ped(...) : int
+    +proc_pag(id, method, val) : bool
+    -_notify_observers(event_type, order_data)
+}
+
+interface PaymentStrategy {
+    +process(value) : bool
+    +requires_manual_approval() : bool
+}
+class CreditCardPayment
+class PixPayment
+class BoletoPayment
+CreditCardPayment ..|> PaymentStrategy
+PixPayment ..|> PaymentStrategy
+BoletoPayment ..|> PaymentStrategy
+
+interface ItemDiscountStrategy {
+    +calculate(price, quantity) : float
+    }
+class NormalDiscount
+class Discount10
+class Discount20
+class FreeShipping
+NormalDiscount ..|> ItemDiscountStrategy
+Discount10 ..|> ItemDiscountStrategy
+Discount20 ..|> ItemDiscountStrategy
+FreeShipping ..|> ItemDiscountStrategy
+
+interface OrderDiscountStrategy {
+    +apply_discount(total) : float
+}
+class VIPOrderDiscount
+class CorpOrderDiscount
+class NormalOrderDiscount
+class SpecialOrderDiscount
+VIPOrderDiscount ..|> OrderDiscountStrategy
+CorpOrderDiscount ..|> OrderDiscountStrategy
+NormalOrderDiscount ..|> OrderDiscountStrategy
+SpecialOrderDiscount ..|> OrderDiscountStrategy
+
+interface OrderObserver {
+    +update(event_type, order_data)
+}
+class NormalClientNotifier
+class VIPClientNotifier
+class CorporateClientNotifier
+class SpecialClientNotifier
+NormalClientNotifier ..|> OrderObserver
+VIPClientNotifier ..|> OrderObserver
+CorporateClientNotifier ..|> OrderObserver
+SpecialClientNotifier ..|> OrderObserver
+
+' Relações de dependência e composição
+Sis --> OrderService
+Sis --> SQLiteOrderRepository
+Sis --> NotificationService
+
+OrderService o-- IOrderRepository
+OrderService o-- NotificationService
+OrderService o-- PaymentStrategy
+OrderService o-- ItemDiscountStrategy
+OrderService o-- OrderDiscountStrategy
+OrderService o-- OrderObserver
+
+NormalClientNotifier --> NotificationService
+VIPClientNotifier --> NotificationService
+CorporateClientNotifier --> NotificationService
+SpecialClientNotifier --> NotificationService
+
+@enduml

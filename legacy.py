@@ -10,6 +10,7 @@ from src.services.notification_service import NotificationService
 from src.services.order_service import OrderService
 from src.strategies.crypto_payment import CryptoPayment
 from src.observers.whatsapp_observer import WhatsAppNotifier
+from src.strategies.volume_discount import VolumeDiscount
 
 class Sis:
     def __init__(self) -> None:
@@ -24,6 +25,7 @@ class Sis:
         self.service.attach(SpecialClientNotifier(self.notifier))
         self.service.register_payment_method('cripto', CryptoPayment())
         self.service.attach(WhatsAppNotifier(self.notifier))
+        self.service.register_item_discount('volume', VolumeDiscount())
 
     def add_ped(self, n: str, its: List[Dict[str, Any]], t: str) -> int:
         return self.service.add_ped(n, its, t)

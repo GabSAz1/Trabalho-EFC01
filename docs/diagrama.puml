@@ -57,6 +57,8 @@ class OrderService {
     +attach(observer)
     +add_ped(...) : int
     +proc_pag(id, method, val) : bool
+    +register_payment_method(name, strategy)
+    +register_item_discount(name, strategy)
     -_notify_observers(event_type, order_data)
 }
 
@@ -67,21 +69,25 @@ interface PaymentStrategy {
 class CreditCardPayment
 class PixPayment
 class BoletoPayment
+class CryptoPayment <<Extensao>>
 CreditCardPayment ..|> PaymentStrategy
 PixPayment ..|> PaymentStrategy
 BoletoPayment ..|> PaymentStrategy
+CryptoPayment ..|> PaymentStrategy
 
 interface ItemDiscountStrategy {
     +calculate(price, quantity) : float
-    }
+}
 class NormalDiscount
 class Discount10
 class Discount20
 class FreeShipping
+class VolumeDiscount <<Extensao>>
 NormalDiscount ..|> ItemDiscountStrategy
 Discount10 ..|> ItemDiscountStrategy
 Discount20 ..|> ItemDiscountStrategy
 FreeShipping ..|> ItemDiscountStrategy
+VolumeDiscount ..|> ItemDiscountStrategy
 
 interface OrderDiscountStrategy {
     +apply_discount(total) : float
@@ -102,10 +108,12 @@ class NormalClientNotifier
 class VIPClientNotifier
 class CorporateClientNotifier
 class SpecialClientNotifier
+class WhatsAppNotifier <<Extensao>>
 NormalClientNotifier ..|> OrderObserver
 VIPClientNotifier ..|> OrderObserver
 CorporateClientNotifier ..|> OrderObserver
 SpecialClientNotifier ..|> OrderObserver
+WhatsAppNotifier ..|> OrderObserver
 
 ' Relações de dependência e composição
 Sis --> OrderService
@@ -123,5 +131,6 @@ NormalClientNotifier --> NotificationService
 VIPClientNotifier --> NotificationService
 CorporateClientNotifier --> NotificationService
 SpecialClientNotifier --> NotificationService
+WhatsAppNotifier --> NotificationService
 
 @enduml

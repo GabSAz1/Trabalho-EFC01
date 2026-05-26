@@ -23,6 +23,8 @@ class Sis:
         self.service.attach(VIPClientNotifier(self.notifier))
         self.service.attach(CorporateClientNotifier(self.notifier))
         self.service.attach(SpecialClientNotifier(self.notifier))
+
+        # === PLUGANDO AS EXTENSÕES OBRIGATÓRIAS (OCP) ===
         self.service.register_payment_method('cripto', CryptoPayment())
         self.service.attach(WhatsAppNotifier(self.notifier))
         self.service.register_item_discount('volume', VolumeDiscount())

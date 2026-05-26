@@ -4,15 +4,18 @@ Este documento apresenta a análise do código legado (`legacy.py`), identifican
 
 ---
 
-## 1. SRP - Single Responsibility Principle (Princípio da Responsabilidade Única)
+# 1. SRP - Single Responsibility Principle (Princípio da Responsabilidade Única)
 
-**Violação 1: A classe `Sis` mistura acesso a banco de dados com regras de negócio.**
-* **Trecho do Código:**
-  ```python
+---
+## Violação 1: A classe `Sis` mistura acesso a banco de dados com regras de negócio.
+
+### Trecho do Código:
+
+```python
   def add_ped(self, n, its, t):
       # ... (cálculo de regras de negócio, descontos, totais) ...
       self.c.execute("INSERT INTO ped (cli, itens, tot, st, dt, tp) VALUES (?, ?, ?, ?, ?, ?)", ...)
-
+```
 ### Justificativa
 
 A função add_ped calcula os totais (regra de negócio) e realiza operações diretas em SQL (persistência).
@@ -206,4 +209,22 @@ A classe depende de uma estrutura de dados concreta local no lugar de depender d
 Não é possível plugar um sistema real (via API REST ou gRPC) sem abrir a classe central do sistema e substituir o código fonte.
 
 ---
+
+
+
+
+
+
+# Justificativa da Estrutura de Arquitetura Adotada
+
+## A estrutura final do projeto divergiu levemente da sugestão inicial garantindo a aprovação contínua dos testes Golden Master.
+
+### As principais adaptações foram:
+
+Ausência de customer.py e order_item.py (Models): O sistema legado operava perfeitamente recebendo dicionários simples para itens e strings para clientes. Para manter a compatibilidade retroativa e evitar overhead de conversão (Data Transfer Objects), optou-se por manter a tipagem forte (List[Dict[str, Any]]) no OrderService, dispensando a criação de classes de domínio anêmicas que não teriam comportamento adicional.
+
+Ausência de payment_service.py: Com a implementação do padrão Strategy (PaymentStrategy), a lógica de processamento e taxas foi totalmente encapsulada nas próprias estratégias (CreditCardPayment, CryptoPayment, etc.). O OrderService atua como o contexto da estratégia, tornando a criação de um "Service" intermediário para pagamentos uma abstração redundante.
+
+Inclusão de Novos Arquivos de Extensão: Foram adicionados arquivos granulares e independentes (crypto_payment.py, whatsapp_observer.py, volume_discount.py) e suas respectivas suítes de testes isoladas. Isso prova de forma empírica o respeito ao OCP (Open/Closed Principle), onde novas funcionalidades ganharam seus próprios módulos sem inchar os diretórios base.
+
 

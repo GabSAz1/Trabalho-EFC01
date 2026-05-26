@@ -134,3 +134,12 @@ class OrderService:
                     tot = self.calc_tot_cli(n)
                     print(f"Cliente: {n} ({tp}) - Total gasto: R${tot:.2f}")
                     f.write(f"{n},{tp}\n")
+
+    # === MÉTODOS DE EXTENSÃO (OCP) ===
+    def register_payment_method(self, name: str, strategy: Any) -> None:
+        """Permite plugar novos métodos de pagamento sem alterar a classe."""
+        self.payment_methods[name] = strategy
+
+    def register_item_discount(self, name: str, strategy: Any) -> None:
+        """Permite plugar novas estratégias de desconto por item sem alterar a classe."""
+        self.item_discounts[name] = strategy
